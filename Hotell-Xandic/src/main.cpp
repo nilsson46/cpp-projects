@@ -3,90 +3,191 @@
 #include <vector>
 #include <istream>
 #include <sstream>
-
+#include <algorithm>
+#include "Log.h"
 using 
     std::cout,
     std::cin,
     std::string,
     std::fstream,
+    std::ofstream,
     std::ios,
     std::vector,
-    std::istringstream;
+    std::istringstream,
+    std::to_string;
 
 bool isRunning = true;
-fstream file;
-string fileName = "user.txt";
+bool isLoggedIn = false;
 
-struct UserInfo{
+fstream userFile;
+string userFileName = "user.txt";
+
+fstream bookingFile; 
+string bookingFileName = "booking.txt";
+
+struct UserInfo {
+    static int latestId; 
+    int id;
     string username;
-    string password; 
-};
+    string password;
 
-void displayMenu(){
-    cout << "[1] Log in"<<'\n';
-    cout << "[2] Register"<<'\n';
-    cout << "[3] Exit"<<'\n';
+    UserInfo() : id(++latestId) {}
+};
+int UserInfo::latestId;
+
+vector<string> readFromFile(fstream& file, const string& fileName) {
+    vector<string> lines;
+    file.open(fileName, ios::in);
+
+    string line;
+    while (getline(file, line)) {
+        lines.push_back(line);
+    }
+
+    file.close();
+    return lines;
 }
-string getUserInput(string prompt){
+vector<UserInfo> getUsers() {
+    vector<UserInfo> users;
+    for (const string& text : readFromFile(userFile, userFileName)) {
+        UserInfo user;
+        istringstream iss(text);
+        iss >> user.username >> user.password;
+        users.push_back(user);
+    }
+    return users;
+}
+
+void updateLatestId() {
+    vector<UserInfo> users = getUsers();
+    if (!users.empty()) {
+        UserInfo::latestId = users.back().id;
+    }
+    else {
+        UserInfo::latestId = 0;
+    }
+}
+
+void displayMenu(const vector<string>& menuOptions) {
+    for (int i = 0; i < menuOptions.size(); i++) {
+        cout << "[" << (i + 1) << "] " << menuOptions[i] << '\n';
+    }
+}
+
+string getUserInput(const string& prompt) {
     string userInput;
     cout << prompt;
     cin >> userInput;
     return userInput;
 }
+/*void writeToFile(fstream& file, string & fileName, vector<string> input){
+    file.open(fileName, ios::out | ios::app);
+    //checkFileOpen(file, filename);
 
-void readFromFile(UserInfo userInfo){
-    file.open(fileName, ios::in);
-    string line, name, secret;
-    bool isLoggedIn = false;
-    for(int i = 1; getline(file, line); i++){
-        istringstream iss(line);
-        iss >> name >> secret;
-        //cout << i << ". " << line << '\n';
-        if(name == userInfo.username && secret == userInfo.password){
-            isLoggedIn = true;
+    for(string text : input){
+        file << text << '\n';
+    }
+    file.close();
+} */
+
+void writeToFile(const string& fileName, const vector<string>& input) {
+    ofstream file(fileName, ios::out | ios::app);
+    if (file.is_open()) {
+        for (const string& text : input) {
+            file << text << '\n';
+        }
+        file.close();
+    } else {
+        cout << "Unable to open file: " << fileName << '\n';
+    }
+}
+bool validateUser(const UserInfo& input) {
+    for (const UserInfo& user : getUsers()) {
+        if (user.username == input.username && user.password == input.password) {
+            return true;
         }
     }
-    if(isLoggedIn = true){
+    return false;
+}
+
+void login() {
+    UserInfo userInfo;
+    userInfo.username = getUserInput("Enter your username: ");
+    userInfo.password = getUserInput("Enter your password: ");
+
+    if (validateUser(userInfo)) {
         cout << "Welcome " << userInfo.username << '\n';
+        isLoggedIn = true;
+    } else {
+        cout << "Login failed" << '\n';
     }
-    file.close();
 }
-void writeToFile(vector<string> text){
-    file.open(fileName, ios::out | ios::app);
-    for (string text : text){
-        file <<text << '\n';
-    }
-    file.close();
-}
-void login(){
+
+void registerNewUser() {
     UserInfo userInfo;
     userInfo.username = getUserInput("Enter your username: ");
     userInfo.password = getUserInput("Enter your password: ");
 
-    readFromFile(userInfo);
+    if (validateUser(userInfo)) {
+        cout << "User already exists. Registration failed." << '\n';
+    } else { 
+        updateLatestId();
+        
+        userInfo.id = ++UserInfo::latestId;
+        
+        cout << "Registration successful. Welcome, " << userInfo.username << " with ID " << UserInfo::latestId << '\n';
+
+        writeToFile(userFileName, {to_string(userInfo.id) + " " + userInfo.username + " " + userInfo.password});
+    }
 }
 
-void registerNewUser(){
-    UserInfo userInfo;
-    userInfo.username = getUserInput("Enter your username: ");
-    userInfo.password = getUserInput("Enter your password: ");
-    cout << "Username: " << userInfo.username <<'\n';
-    cout << "Password: " << userInfo.password <<'\n';
-    //Enter username and password
-    //check if user already exist
-    //else create user
-    writeToFile({userInfo.username, userInfo.password});
+void getBookings() {
+    //vector<UserInfo> bookings;
+    for (string text : readFromFile(bookingFile, bookingFileName)) {
+        cout << text << '\n';
+        //UserInfo user;
+        //istringstream iss(text);
+        /*iss >> user.username >> user.password;
+        users.push_back(user); */
+    }
+    //return bookings;
+}
 
-} 
-void handleUserSelection(string userInput){
-    UserInfo userInfo; 
-    if(userInput == "1"){
+void bookingMenuSelection(const string& userInput) {
+    if (userInput == "1") {
+        cout << "Add booking" << '\n';
+    } else if (userInput == "2") {
+        cout << "Reservations" << '\n';
+        getBookings();
+    } else if (userInput == "3") {
+        cout << "Remove reservation" << '\n';
+    } else if (userInput == "4") {
+        cout << "Change reservation" << '\n';
+    } else if (userInput == "5") {
+        isLoggedIn = false;
+    } else {
+        cout << "Invalid selection. Try again." << '\n';
+    }
+}
+
+void bookingLoop() {
+    while (isLoggedIn) {
+        displayMenu({"Add booking", "Check your Reservations", "Remove reservation", "Update reservation", "Logout"});
+        bookingMenuSelection(getUserInput("Enter your selection: "));
+    }
+}
+
+void handleUserSelection(const string& userInput) {
+    if (userInput == "1") {
         cout << "Login " << '\n';
         login();
-    } else if(userInput == "2") {
+        if (isLoggedIn) {
+            bookingLoop();
+        }
+    } else if (userInput == "2") {
         cout << "Register new user" << '\n';
         registerNewUser();
-    } else if(userInput == "3") {
+    } else if (userInput == "3") {
         cout << "Exiting..." << '\n';
         isRunning = false;
     } else {
@@ -94,14 +195,14 @@ void handleUserSelection(string userInput){
     }
 }
 
-
-void gameloop(){
-    while(isRunning){
-        displayMenu();
+void loginLoop() {
+    while (isRunning) {
+        displayMenu({"Login", "Register", "Exit"});
         handleUserSelection(getUserInput("Enter your selection: "));
     }
 }
-int main (){
-    gameloop();
+
+int main() {
+    loginLoop();
     return 0;
 }
