@@ -24,13 +24,15 @@ string userFileName = "user.txt";
 
 fstream bookingFile; 
 string bookingFileName = "booking.txt";
+//TODO CSV!
+//TODO ID is username username is password. 
 
 struct UserInfo {
-    static int latestId; 
-    int id;
+    
     string username;
     string password;
-
+    static int latestId; 
+    int id;
     UserInfo() : id(++latestId) {}
 };
 int UserInfo::latestId;
@@ -47,6 +49,7 @@ vector<string> readFromFile(fstream& file, const string& fileName) {
     file.close();
     return lines;
 }
+
 vector<UserInfo> getUsers() {
     vector<UserInfo> users;
     for (const string& text : readFromFile(userFile, userFileName)) {
@@ -80,25 +83,22 @@ string getUserInput(const string& prompt) {
     cin >> userInput;
     return userInput;
 }
-/*void writeToFile(fstream& file, string & fileName, vector<string> input){
-    file.open(fileName, ios::out | ios::app);
-    //checkFileOpen(file, filename);
-
-    for(string text : input){
-        file << text << '\n';
-    }
-    file.close();
-} */
 
 void writeToFile(const string& fileName, const vector<string>& input) {
     ofstream file(fileName, ios::out | ios::app);
-    if (file.is_open()) {
-        for (const string& text : input) {
-            file << text << '\n';
-        }
-        file.close();
-    } else {
+    if (!file.is_open()) {
         cout << "Unable to open file: " << fileName << '\n';
+        return;
+    }
+
+    for (const string& text : input) {
+        cout << "Writing to file: " << text << '\n';
+        file << text << '\n';
+    }
+
+    file.close();
+    if (file.fail()) {
+        cout << "Error closing file: " << fileName << '\n';
     }
 }
 bool validateUser(const UserInfo& input) {
@@ -137,7 +137,7 @@ void registerNewUser() {
         
         cout << "Registration successful. Welcome, " << userInfo.username << " with ID " << UserInfo::latestId << '\n';
 
-        writeToFile(userFileName, {to_string(userInfo.id) + " " + userInfo.username + " " + userInfo.password});
+        writeToFile(userFileName, {userInfo.username + " " + userInfo.password + " " + to_string(userInfo.id)});
     }
 }
 
