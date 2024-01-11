@@ -6,6 +6,7 @@
         "xiosbase": "cpp",
         "iosfwd": "cpp",
         "vector": "cpp",
-        "string": "cpp"
+        "string": "cpp",
+        "xlocale": "cpp"
     }
 }

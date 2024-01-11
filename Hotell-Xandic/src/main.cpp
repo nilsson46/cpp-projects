@@ -24,18 +24,25 @@ string userFileName = "user.txt";
 
 fstream bookingFile; 
 string bookingFileName = "booking.txt";
-//TODO CSV!
-//TODO ID is username username is password. 
 
 struct UserInfo {
-    
     string username;
     string password;
     static int latestId; 
-    int id;
-    UserInfo() : id(++latestId) {}
+    int userId;
+    UserInfo() : userId(++latestId) {}
 };
 int UserInfo::latestId;
+
+struct Booking {
+    static int latestBookingId;
+    int bookingId;
+    string username;
+    string room; 
+    string date;
+    Booking() : bookingId(++latestBookingId) {}
+};
+int Booking::latestBookingId;
 
 vector<string> readFromFile(fstream& file, const string& fileName) {
     vector<string> lines;
@@ -64,10 +71,20 @@ vector<UserInfo> getUsers() {
 void updateLatestId() {
     vector<UserInfo> users = getUsers();
     if (!users.empty()) {
-        UserInfo::latestId = users.back().id;
+        UserInfo::latestId = users.back().userId;
     }
     else {
         UserInfo::latestId = 0;
+    }
+}
+
+void updateLatestBookingId() {
+    vector<Booking> bookings = getBookings();
+    if (!bookings.empty()) {
+        Booking::latestBookingId = bookings.back().bookingId;
+    }
+    else {
+        Booking::latestBookingId = 0;
     }
 }
 
@@ -101,6 +118,7 @@ void writeToFile(const string& fileName, const vector<string>& input) {
         cout << "Error closing file: " << fileName << '\n';
     }
 }
+
 bool validateUser(const UserInfo& input) {
     for (const UserInfo& user : getUsers()) {
         if (user.username == input.username && user.password == input.password) {
@@ -133,32 +151,51 @@ void registerNewUser() {
     } else { 
         updateLatestId();
         
-        userInfo.id = ++UserInfo::latestId;
+        userInfo.userId = ++UserInfo::latestId;
         
         cout << "Registration successful. Welcome, " << userInfo.username << " with ID " << UserInfo::latestId << '\n';
 
-        writeToFile(userFileName, {userInfo.username + " " + userInfo.password + " " + to_string(userInfo.id)});
+        writeToFile(userFileName, {userInfo.username + " " + userInfo.password + " " + to_string(userInfo.userId)});
     }
 }
 
-void getBookings() {
-    //vector<UserInfo> bookings;
+void createBooking(const UserInfo& user){
+    Booking booking; 
+    booking.username = user.username;
+    booking.date = getUserInput("Enter the date you want to book: ");
+    
+    updateLatestId(); // Corrected function name
+    
+    booking.bookingId = ++Booking::latestBookingId;
+
+    writeToFile(bookingFileName, {to_string(booking.bookingId) + " " + booking.date + " " + booking.username});
+}
+
+vector<Booking> getBookings() {
+    vector<Booking> bookings;
     for (string text : readFromFile(bookingFile, bookingFileName)) {
-        cout << text << '\n';
-        //UserInfo user;
-        //istringstream iss(text);
-        /*iss >> user.username >> user.password;
-        users.push_back(user); */
+        Booking booking;
+        istringstream iss(text);
+        iss >> booking.bookingId >> booking.date >> booking.username;
+        bookings.push_back(booking);
     }
-    //return bookings;
+    return bookings;
+}
+
+void displayBookings(const vector<Booking>& bookingList) {
+    for (const Booking& booking : bookingList) {
+        cout << "Booking ID: " << booking.bookingId << ", Date: " << booking.date << ", Username: " << booking.username << '\n';
+    }
 }
 
 void bookingMenuSelection(const string& userInput) {
     if (userInput == "1") {
         cout << "Add booking" << '\n';
+        createBooking(getUsers().front());
     } else if (userInput == "2") {
         cout << "Reservations" << '\n';
-        getBookings();
+        vector<Booking> bookings = getBookings();
+        displayBookings(bookings);
     } else if (userInput == "3") {
         cout << "Remove reservation" << '\n';
     } else if (userInput == "4") {
